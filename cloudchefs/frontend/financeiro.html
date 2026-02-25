@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/financeiro.css">
+    <title>Financeiro - Cloud Chefs</title>
+    <style>
+        /* Estilos específicos para impressão (oculta filtros, botões e cabeçalho ao imprimir) */
+        @media print {
+
+            /* Oculta topo, filtros, botões, mensagens */
+            .topo,
+            .filtro,
+            .btn-exportar,
+            #global-message-container,
+            .tabela-container thead th:first-child,
+            .tabela-container tbody td:first-child {
+                display: none !important;
+            }
+
+            .container {
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            table {
+                font-size: 10pt;
+                width: 100%;
+            }
+
+            /* Exibir apenas o que deve ser impresso */
+            body {
+                background-color: white;
+            }
+        }
+    </style>
+</head>
+
+<body onload="verificarAcesso('Financeiro')">
+    <header class="topo">
+        <a href="#" onclick="history.back()" class="btn-voltar-topo">← Voltar</a>
+        <img src="img/logo.png" alt="Logo Cloud Chefs" class="logo-topo">
+        <h1>Financeiro</h1>
+    </header>
+
+    <div class="container">
+        <div class="filtro">
+            <p class="titulo-filtro">Filtros:</p>
+
+            <div class="campos-filtro">
+                <div class="linha-filtro">
+
+                    <div class="item-filtro">
+                        <label for="forma-pagamento">Forma de Pagamento:</label>
+                        <select class="input input-select" id="forma-pagamento">
+                            <option value="">TODAS</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Debito">Débito</option>
+                            <option value="Credito">Crédito</option>
+                            <option value="PIX">PIX</option>
+                        </select>
+                    </div>
+
+                    <div class="item-filtro">
+                        <label for="data-inicio">Data Início:</label>
+                        <input class="input input-date" type="date" id="data-inicio">
+                    </div>
+                    <div class="item-filtro">
+                        <label for="data-fim">Data Fim:</label>
+                        <input class="input input-date" type="date" id="data-fim">
+                    </div>
+
+                    <div class="botoes-acao">
+                        <button class="btn-acao btn-limpar" onclick="limparFiltros()">LIMPAR</button>
+                        <button class="btn-acao btn-consultar" onclick="consultarPedidos()">CONSULTAR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-exportar" onclick="exportarPDF()">EXPORTAR PDF</button>
+
+        <div class="tabela-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nº PEDIDO</th>
+                        <th>FORMA DE PAGAMENTO</th>
+                        <th>DATA ABERTURA</th>
+                        <th>CLIENTE</th>
+                        <th>TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-body">
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div id="global-message-container"></div>
+    <script src="js/auth.js"></script>
+    <script>
+        // Garante que a página só execute após o HTML ser carregado
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verifica o acesso à página (definido em auth.js)
+            verificarAcessoPagina('Financeiro');
+
+            // Carrega todos os pedidos do banco ao abrir a tela
+            consultarPedidos();
+        });
+
+        // Função para formatar a data (DD/MM/AAAA HH:MM)
+        function formatarData(dataISO) {
+            const data = new Date(dataISO);
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Função para formatar o total
+        function formatarMoeda(valor) {
+            // Converte para número e formata
+            return `R$ ${parseFloat(valor).toFixed(2).replace('.', ',')}`;
+        }
+
+        // ------------------------------------------------
+        // 1. Lógica de Consulta (Filtro) - AGORA FALA COM O BANCO
+        // ------------------------------------------------
+
+        async function consultarPedidos() {
+            const formaPagamento = document.getElementById('forma-pagamento').value;
+            const dataInicioStr = document.getElementById('data-inicio').value;
+            const dataFimStr = document.getElementById('data-fim').value;
+
+            const filtros = {
+                forma_pagamento: formaPagamento,
+                data_inicio: dataInicioStr,
+                data_fim: dataFimStr
+            };
+
+            try {
+                const resposta = await fetch("../backend/listar_pedidos_financeiro.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(filtros)
+                });
+
+                const pedidos = await resposta.json();
+
+                if (pedidos.error) {
+                    throw new Error(pedidos.error);
+                }
+
+                carregarTabela(pedidos);
+
+            } catch (err) {
+                console.error("Erro ao consultar pedidos:", err);
+                exibirMensagem(`Erro ao buscar dados: ${err.message}`, 'erro');
+                carregarTabela([]); // Limpa a tabela em caso de erro
+            }
+        }
+
+        // ------------------------------------------------
+        // 2. Lógica de Renderização da Tabela
+        // ------------------------------------------------
+
+        function carregarTabela(pedidos) {
+            const tabelaBody = document.getElementById('tabela-body');
+            tabelaBody.innerHTML = ''; // Limpa a tabela
+
+            if (!Array.isArray(pedidos) || pedidos.length === 0) {
+                tabelaBody.innerHTML = '<tr><td colspan="5">Nenhum pedido encontrado.</td></tr>';
+                return;
+            }
+
+            pedidos.forEach(pedido => {
+                const row = tabelaBody.insertRow();
+
+                // Coluna 1: Nº PEDIDO
+                row.insertCell().textContent = String(pedido.id_pedido).padStart(5, '0');
+
+                // Coluna 2: FORMA DE PAGAMENTO
+                row.insertCell().textContent = pedido.forma_pagamento || 'N/A';
+
+                // Coluna 3: DATA ABERTURA (Formatada)
+                row.insertCell().textContent = formatarData(pedido.data_pedido);
+
+                // Coluna 4: CLIENTE
+                row.insertCell().textContent = pedido.nome_cliente || '';
+
+                // Coluna 5: TOTAL (Formatado)
+                // DEPOIS (corrigido)
+                row.insertCell().textContent = formatarMoeda(pedido.valor_total);
+            });
+        }
+
+        // ------------------------------------------------
+        // 3. Lógica de Exportação e Limpeza
+        // ------------------------------------------------
+
+        function exportarPDF() {
+            // A função de impressão do navegador é a forma mais simples de gerar PDF
+            window.print();
+            exibirMensagem("Preparando impressão do relatório financeiro...", 'alerta');
+        }
+
+        function limparFiltros() {
+            document.getElementById('forma-pagamento').value = "";
+            document.getElementById('data-inicio').value = "";
+            document.getElementById('data-fim').value = "";
+
+            // Recarrega todos os pedidos (sem filtros)
+            consultarPedidos();
+            exibirMensagem('Filtros limpos.', 'alerta');
+        }
+    </script>
+</body>
+
+</html>
