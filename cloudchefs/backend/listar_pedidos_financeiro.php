@@ -30,7 +30,7 @@ $query = "SELECT
             data_pedido, 
             nome_cliente, 
             valor_total 
-          FROM financeiro 
+          FROM pedidos 
           WHERE 1=1"; // 'WHERE 1=1' é um truque para facilitar adicionar filtros
 
 $params = [];
