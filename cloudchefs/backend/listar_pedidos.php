@@ -18,7 +18,7 @@ require 'connect.php';
 try {
     // 1. Pega os 5 pedidos mais antigos que NÃO estão concluídos
     $queryPedidos = "
-        SELECT * FROM financeiro 
+        SELECT * FROM pedidos 
         WHERE status <> 'Concluído' 
         ORDER BY data_pedido ASC 
         LIMIT 5
