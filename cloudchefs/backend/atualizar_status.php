@@ -29,7 +29,7 @@ if (!$id_pedido || !$novo_status) {
 
 try {
     // Atualiza o status do pedido no banco
-    $stmt = $db->prepare("UPDATE pedidos SET status = :status WHERE id_pedido = :id");
+    $stmt = $db->prepare("UPDATE pedido SET status = :status WHERE id_pedido = :id");
     $stmt->execute([':status' => $novo_status, ':id' => $id_pedido]);
     
     echo json_encode(["success" => true, "message" => "Status atualizado com sucesso"]);
