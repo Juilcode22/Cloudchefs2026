@@ -33,7 +33,7 @@ try {
     $stmtItens->execute([':id' => $id_pedido]);
 
     // 2. Deleta o PEDIDO principal
-    $stmtPedido = $db->prepare("DELETE FROM pedidos WHERE id_pedido = :id");
+    $stmtPedido = $db->prepare("DELETE FROM pedido WHERE id_pedido = :id");
     $stmtPedido->execute([':id' => $id_pedido]);
 
     $db->commit();
