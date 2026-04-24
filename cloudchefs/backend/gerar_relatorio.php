@@ -42,7 +42,7 @@ try {
                 DATE(data_pedido) as data_venda, 
                 COUNT(id_pedido) as total_pedidos, 
                 SUM(valor_total) as valor_total
-            FROM pedidos
+            FROM pedido
             WHERE data_pedido BETWEEN :inicio AND :fim
             GROUP BY DATE(data_pedido)
             ORDER BY data_venda ASC;
@@ -56,7 +56,7 @@ try {
                 SUM(ip.quantidade) as total_vendido,
                 SUM(ip.valor_unitario * ip.quantidade) as receita_total
             FROM itens_pedido ip
-            JOIN pedidos p ON ip.id_pedido_fk = p.id_pedido
+            JOIN pedido p ON ip.id_pedido_fk = p.id_pedido
             WHERE p.data_pedido BETWEEN :inicio AND :fim
             GROUP BY ip.nome_produto
             ORDER BY total_vendido DESC;
